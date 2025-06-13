@@ -168,7 +168,7 @@ async function getSeriesStreams(imdbId, season, episode) {
 
 
 builder.defineStreamHandler(async ({type, id}) => {
-    logger.info('Stream request:', type, id);
+    logger.info(`Stream request: ${type} ${id}`);
     try {
         if (type === 'movie') {
             // Movie IDs are in the format: tt1234567
