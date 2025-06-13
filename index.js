@@ -30,7 +30,7 @@ async function fetchOmdbDetails(imdbId){
      }
     return response.data;
   } catch (e) {
-    console.log(`Error fetching metadata: ${e}`)
+    logger.error(`Error fetching metadata: ${e}`)
     return null
   }
 }
@@ -48,7 +48,7 @@ async function fetchTmdbId(imdbId){
           });
       return response.data;
   } catch (e) {
-      console.log(`Error fetching metadata: ${e}`)
+      logger.error(`Error fetching metadata: ${e}`)
       return null
   }
 }
@@ -63,7 +63,7 @@ async function extractAllStreams({type, imdbId, season, episode}) {
         : tmdbRes['tv_results'][0]?.id;
 
     if (!id) {
-        console.warn('❌ TMDB ID not found');
+        logger.error('❌ TMDB ID not found');
         return streams;
     }
 
@@ -72,13 +72,11 @@ async function extractAllStreams({type, imdbId, season, episode}) {
         fmoviesResult,
         vidoraResult,
         videasyResult,
-        vidsrcResult
     ] = await Promise.allSettled([
         extractor('broflix', type, id, season, episode),
         extractor('fmovies', type, id, season, episode),
         extractor('vidora', type, id, season, episode),
         extractor('videasy', type, id, season, episode),
-        extractor('vidsrc', type, id, season, episode),
     ]);
 
     if (fmoviesResult.status === 'fulfilled' && fmoviesResult.value) {
@@ -86,7 +84,7 @@ async function extractAllStreams({type, imdbId, season, episode}) {
             streams[label] = fmoviesResult.value[label];
         }
     } else {
-        console.warn('❌ Fmovies extraction failed:', fmoviesResult.reason?.message);
+        logger.error('❌ Fmovies extraction failed:', fmoviesResult.reason?.message);
     }
 
     if (broflixResult.status === 'fulfilled' && broflixResult.value) {
@@ -94,7 +92,7 @@ async function extractAllStreams({type, imdbId, season, episode}) {
             streams[label] = broflixResult.value[label];
         }
     } else {
-        console.warn('❌ BroFlix extraction failed:', broflixResult.reason?.message);
+        logger.error('❌ BroFlix extraction failed:', broflixResult.reason?.message);
     }
 
     if (vidoraResult.status === 'fulfilled' && vidoraResult.value) {
@@ -102,7 +100,7 @@ async function extractAllStreams({type, imdbId, season, episode}) {
             streams[label] = vidoraResult.value[label];
         }
     } else {
-        console.warn('❌ Vidora extraction failed:', vidoraResult.reason?.message);
+        logger.error('❌ Vidora extraction failed:', vidoraResult.reason?.message);
     }
 
     if (videasyResult.status === 'fulfilled' && videasyResult.value) {
@@ -110,15 +108,7 @@ async function extractAllStreams({type, imdbId, season, episode}) {
             streams[label] = videasyResult.value[label];
         }
     } else {
-        console.warn('❌ VideasyResult extraction failed:', vidoraResult.reason?.message);
-    }
-
-    if (vidsrcResult.status === 'fulfilled' && vidsrcResult.value) {
-        for (const label in vidsrcResult.value) {
-            streams[label] = vidsrcResult.value[label];
-        }
-    } else {
-        console.warn('❌ Vidsrc extraction failed:', vidoraResult.reason?.message);
+        logger.error('❌ VideasyResult extraction failed:', vidoraResult.reason?.message);
     }
 
     return streams;
@@ -133,7 +123,7 @@ async function getMovieStreams(imdbId) {
     // Check cache first
     const cached = streamCache.get(cacheKey);
     if (cached) {
-        console.log(`Using cached stream for movie ${imdbId}`);
+        logger.info(`Using cached stream for movie ${imdbId}`);
         return Object.entries(cached).map(([name, url]) => ({
             name,
             url,
@@ -158,7 +148,7 @@ async function getSeriesStreams(imdbId, season, episode) {
     // Check cache first
     const cached = streamCache.get(cacheKey);
     if (cached) {
-        console.log(`Using cached stream for series ${imdbId} S${season}E${episode}`);
+        logger.info(`Using cached stream for series ${imdbId} S${season}E${episode}`);
         return Object.entries(cached).map(([name, url]) => ({
             name,
             url,
@@ -195,7 +185,7 @@ builder.defineStreamHandler(async ({type, id}) => {
 
         return { streams: [] };
     } catch (error) {
-        console.error('Error in stream handler:', error.message);
+        logger.error('Error in stream handler:', error.message);
         return Promise.resolve({ streams: [] });
     }
 });

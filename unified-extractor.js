@@ -18,10 +18,6 @@ const extractors = {
         type === 'movie'
             ? `https://watch.vidora.su/watch/movie/${id}`
             : `https://watch.vidora.su/watch/tv/${id}/${season}/${episode}`,
-    vidsrc: (type, id, season, episode) =>
-        type === 'movie'
-            ? `https://vidsrc.xyz/embed/movie/${id}`
-            : `https://vidsrc.xyz/embed/tv/${id}/${season}/${episode}`
 };
 
 function randomUserAgent() {
@@ -54,7 +50,7 @@ async function runExtractor(source, type, imdbId, season = null, episode = null)
         turnstile: true,
         customConfig: {},
         connectOption: {},
-        disableXvfb: false,
+        disableXvfb: true,
         ignoreAllFlags: false,
     });
     await page.setUserAgent(randomUserAgent());
@@ -145,7 +141,7 @@ async function runExtractor(source, type, imdbId, season = null, episode = null)
             throw new Error('No stream URL found');
         }
 
-        console.log(`${source} Stream URLs found: ${ streamUrls }`);
+        logger.info(`${source} Stream URLs found: ${ streamUrls }`);
         return streamUrls;
     } catch (err) {
         logger.error(`Error extracting from ${source}: ${err.message}`);
