@@ -16,5 +16,6 @@ RUN npm ci
 COPY . .
 
 # default port from BeamUp
+RUN find . -maxdepth 2 -type f | sed 's/^/FILE: /'
 ENV PORT=7000
 CMD ["npm", "start"]
