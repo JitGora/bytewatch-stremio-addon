@@ -11,7 +11,7 @@ ENV CHROME_PATH=/usr/bin/chromium
 
 # app setup
 WORKDIR /usr/src/app
-COPY package*.json ./
+COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
 
