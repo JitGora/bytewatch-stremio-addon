@@ -18,6 +18,14 @@ const extractors = {
         type === 'movie'
             ? `https://watch.vidora.su/watch/movie/${id}`
             : `https://watch.vidora.su/watch/tv/${id}/${season}/${episode}`,
+    vidsrc: (type, id, season, episode) =>
+        type === 'movie'
+            ? `https://vidsrc.xyz/embed/movie/${id}`
+            : `https://vidsrc.xyz/embed/tv/${id}/${season}/${episode}`,
+    vilora: (type, id, season, episode) =>
+        type === 'movie'
+            ? `https://veloratv.ru/watch/movie/${id}`
+            : `https://veloratv.ru/watch/tv/${id}/${season}/${episode}`
 };
 
 function randomUserAgent() {
@@ -50,7 +58,7 @@ async function runExtractor(source, type, imdbId, season = null, episode = null)
         turnstile: true,
         customConfig: {},
         connectOption: {},
-        disableXvfb: true,
+        disableXvfb: false,
         ignoreAllFlags: false,
     });
     await page.setUserAgent(randomUserAgent());
@@ -92,7 +100,7 @@ async function runExtractor(source, type, imdbId, season = null, episode = null)
         ) {
             // block the request for ads or tracking
             await request.abort();
-        } else if (url.includes('.mp4') || url.includes('.m3u8')) {
+        } else if (url.includes('.mp4') || url.includes('.m3u8') || url.includes('/mp4')) {
             logger.info(`${source} stream URL detected in request`);
             // Categorize the stream URLs
             streamUrls[`${source} Link`] = url;
@@ -105,7 +113,7 @@ async function runExtractor(source, type, imdbId, season = null, episode = null)
     // Start the process
     try {
         logger.info(`Navigating to ${url}`);
-        await page.goto(url, { waitUntil: 'networkidle2', timeout: 10000 });
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 10000 });
         logger.info('Player page loaded');
 
         if (source === 'videasy') {
@@ -141,7 +149,7 @@ async function runExtractor(source, type, imdbId, season = null, episode = null)
             throw new Error('No stream URL found');
         }
 
-        logger.info(`${source} Stream URLs found: ${ streamUrls }`);
+        console.log(`${source} Stream URLs found: ${ streamUrls }`);
         return streamUrls;
     } catch (err) {
         logger.error(`Error extracting from ${source}: ${err.message}`);
