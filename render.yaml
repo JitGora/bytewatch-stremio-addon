@@ -3,6 +3,8 @@ services:
     name: bytewatch-stremio-addon
     runtime: docker
     dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /
     envVars:
       - key: NODE_ENV
         value: production
