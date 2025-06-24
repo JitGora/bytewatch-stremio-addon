@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: bytewatch-stremio-addon
+    env: node
+    buildCommand: |
+      npm install
+      npx puppeteer browsers install chrome
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+    plan: free

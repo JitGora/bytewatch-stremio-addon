@@ -11,7 +11,6 @@ A Node.js-powered Stremio addon that scrapes multiple streaming sites using Pupp
 - Stremio addon-compatible manifest & stream handler
 - Caching using `node-cache`
 - Logging using `winston`
-- Deployable on BeamUp with 1 command
 
 ---
 
@@ -37,12 +36,8 @@ bytewatch-stremio-addon/
 - npm (Node package manager)
 - At least 1GB RAM (Puppeteer launches a browser)
 
-### To Deploy with BeamUp
-
-- Node.js v18+ or later
-- a GitHub account
-- your SSH key added to your GitHub account
-- Internet access (no firewall restrictions on HTTPS)
+### To Run Remotly 
+ - A free render account
 
 ---
 
@@ -79,42 +74,30 @@ There are currently two such clients that you can test with:
     Stremio v4.4.10+
     Stremio Web Version
 Note: if you want to load an addon by URL in Stremio, the URL must either be accessed on 127.0.0.1 or support HTTPS.
----
 
-## 🚀 Deployment (Using BeamUp)
+## Installation (Remote)
 
-BeamUp is a serverless platform for deploying Node.js apps (like this addon) publicly in seconds.
+## 🚀 Deploy Your Own Instance (One-Click)
 
-### Install BeamUp CLI
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/93bx/bytewatch-stremio-addon)
 
-```bash
-npm install beamup-cli -g
-```
+Sign in to Render (or create a free account)\
+The button will automatically:
+- Fork the repository
+- Configure all environment variables
+- Set up the build and start commands
+- Deploy the service
 
-### Usage
+**Or manually:**
+1. Fork this repository
+2. Sign up at [render.com](https://render.com)
+3. Click "New Web Service"
+4. Connect your forked repository
+5. Set environment variable: `PORT = 10000`
+6. Deploy!
 
-go to the project directory and write the following command
-```bash
-beamup 
-```
-The beamup command is a universal command, it will handle both initial setup and deploying projects.
+After deploying the app, paste the render URL in Stremio searchbar to add it.
 
-### One Time Setup
-
-When you run beamup for the first time, it will:
-It will give you a public URL like:
-
-- ask you for a host, use a.baby-beamup.club 
-- ask you for your GitHub username
-
-Once you've added this information, it will save it and not ask you again. If you ever want to change these settings, use beamup config.
-
-### Use in Stremio
-
-- Open Stremio
-- Navigate to: **Add-ons > Paste the beamup url in the searchbar**
-
-Now you can use the addon successfully.
 ---
 
 ## Notes
