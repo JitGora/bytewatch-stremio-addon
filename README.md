@@ -37,7 +37,8 @@ bytewatch-stremio-addon/
 - At least 1GB RAM (Puppeteer launches a browser)
 
 ### To Run Remotly 
- - A free render account
+ - A free render account OR
+ - A free vercel account
 
 ---
 
@@ -88,12 +89,11 @@ Note: if you want to load an addon by URL in Stremio, the URL must either be acc
 ### Manual Deployment Options
 
 #### Deploy to Render Manually
-1. Fork this repository
-2. Sign up at [render.com](https://render.com)
-3. Click "New Web Service"
-4. Connect your forked repository
-5. Set environment variable: `PORT = 10000`
-6. Deploy!
+1. Sign up at [render.com](https://render.com)
+2. Click "New Web Service"
+3. Click "Public Git Repository" and paste the Github link > [Github repo link](https://github.com/93bx/bytewatch-stremio-addon) 
+4. Set environment variable: `PORT = 10000`
+5. Deploy!
 
 #### Deploy to Vercel Manually
 1. Fork this repository

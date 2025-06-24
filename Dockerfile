@@ -1,8 +1,8 @@
 FROM node:18-slim
 
-# Install Chrome dependencies
+# Install Chrome dependencies and xvfb
 RUN apt-get update \
-    && apt-get install -y wget gnupg \
+    && apt-get install -y wget gnupg xvfb \
     && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
     && sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list' \
     && apt-get update \
@@ -38,6 +38,7 @@ EXPOSE 10000
 ENV CHROME_PATH=/usr/bin/google-chrome-stable
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV NODE_ENV=production
+ENV DISPLAY=:99
 
-# Start the app
-CMD ["node", "index.js"]
+# Start xvfb and then the app
+CMD ["sh", "-c", "Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 & node index.js"]
