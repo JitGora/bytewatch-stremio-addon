@@ -1,13 +1,24 @@
 services:
   - type: web
     name: bytewatch-stremio-addon
-    runtime: docker
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
-    healthCheckPath: /
+    runtime: node
+    buildCommand: |
+      curl -fsSL https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb -o chrome.deb
+      apt-get update
+      apt-get install -y ./chrome.deb xvfb
+      rm chrome.deb
+      npm install
+    startCommand: |
+      Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+      export DISPLAY=:99
+      node index.js
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 10000
+      - key: CHROME_PATH
+        value: /usr/bin/google-chrome-stable
+      - key: DISPLAY
+        value: ":99"
     plan: free

@@ -37,8 +37,8 @@ bytewatch-stremio-addon/
 - At least 1GB RAM (Puppeteer launches a browser)
 
 ### To Run Remotly 
- - A free render account OR
- - A free vercel account
+ - A free Github account
+ - A free render account OR a free vercel account
 
 ---
 
