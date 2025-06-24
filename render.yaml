@@ -3,6 +3,8 @@ services:
     name: bytewatch-stremio-addon
     env: node
     buildCommand: |
+      apt-get update
+      apt-get install -y chromium
       npm install
       npx puppeteer browsers install chrome
     startCommand: npm start
@@ -11,4 +13,6 @@ services:
         value: production
       - key: PORT
         value: 10000
+      - key: CHROME_PATH
+        value: /usr/bin/chromium
     plan: free
