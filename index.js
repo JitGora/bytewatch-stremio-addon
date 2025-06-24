@@ -18,7 +18,7 @@ const builder = new addonBuilder({
     idPrefixes: ['tt']
 });
 
-// Setup cache to reduce load (cache for 24 hours)
+// Setup cache to reduce load (cache for 2 hours)
 const streamCache = new NodeCache({ stdTTL: 7200, checkperiod: 120 });
 
 // Fetch movie data
@@ -68,19 +68,19 @@ async function extractAllStreams({type, imdbId, season, episode}) {
     }
 
     const [
-        broflixResult,
+        wooflixResult,
         fmoviesResult,
         vidoraResult,
         videasyResult,
         viloraResult,
-        vidsrcResult
+        vidsrcResult,
     ] = await Promise.allSettled([
-        extractor('broflix', type, id, season, episode),
+        extractor('wooflix', type, id, season, episode),
         extractor('fmovies', type, id, season, episode),
         extractor('vidora', type, id, season, episode),
         extractor('videasy', type, id, season, episode),
         extractor('vilora', type, id, season, episode),
-        extractor('vidsrc', type, id, season, episode)
+        extractor('vidsrc', type, id, season, episode),
     ]);
 
     if (fmoviesResult.status === 'fulfilled' && fmoviesResult.value) {
@@ -91,12 +91,12 @@ async function extractAllStreams({type, imdbId, season, episode}) {
         console.warn('❌ Fmovies extraction failed:', fmoviesResult.reason?.message);
     }
 
-    if (broflixResult.status === 'fulfilled' && broflixResult.value) {
-        for (const label in broflixResult.value) {
-            streams[label] = broflixResult.value[label];
+    if (wooflixResult.status === 'fulfilled' && wooflixResult.value) {
+        for (const label in wooflixResult.value) {
+            streams[label] = wooflixResult.value[label];
         }
     } else {
-        console.warn('❌ BroFlix extraction failed:', broflixResult.reason?.message);
+        console.warn('❌ wooflix extraction failed:', wooflixResult.reason?.message);
     }
 
     if (vidoraResult.status === 'fulfilled' && vidoraResult.value) {
@@ -122,6 +122,7 @@ async function extractAllStreams({type, imdbId, season, episode}) {
     } else {
         console.warn('❌ Vilora Result extraction failed:', viloraResult.reason?.message);
     }
+
     if (vidsrcResult.status === 'fulfilled' && vidsrcResult.value) {
         for (const label in vidsrcResult.value) {
             streams[label] = vidsrcResult.value[label];
@@ -130,7 +131,7 @@ async function extractAllStreams({type, imdbId, season, episode}) {
         console.warn('❌ VidSrc Result extraction failed:', vidsrcResult.reason?.message);
     }
 
-        return streams;
+    return streams;
 }
 
 // Function to handle streams for movies
