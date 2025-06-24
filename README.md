@@ -79,16 +79,15 @@ Note: if you want to load an addon by URL in Stremio, the URL must either be acc
 
 ## 🚀 Deploy Your Own Instance (One-Click)
 
+### Option 1: Deploy to Render (Recommended)
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/93bx/bytewatch-stremio-addon)
 
-Sign in to Render (or create a free account)\
-The button will automatically:
-- Fork the repository
-- Configure all environment variables
-- Set up the build and start commands
-- Deploy the service
+### Option 2: Deploy to Vercel
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2F93bx%2Fbytewatch-stremio-addon)
 
-**Or manually:**
+### Manual Deployment Options
+
+#### Deploy to Render Manually
 1. Fork this repository
 2. Sign up at [render.com](https://render.com)
 3. Click "New Web Service"
@@ -96,7 +95,15 @@ The button will automatically:
 5. Set environment variable: `PORT = 10000`
 6. Deploy!
 
-After deploying the app, paste the render URL in Stremio searchbar to add it.
+#### Deploy to Vercel Manually
+1. Fork this repository
+2. Sign up at [vercel.com](https://vercel.com)
+3. Click "New Project"
+4. Import your forked repository
+5. The environment variables will be set automatically from vercel.json
+6. Deploy!
+
+After deploying the app, paste the deployment URL in Stremio's searchbar to add it.
 
 ---
 

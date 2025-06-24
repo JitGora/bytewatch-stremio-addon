@@ -1,12 +1,13 @@
 services:
   - type: web
     name: bytewatch-stremio-addon
-    env: node
+    runtime: node
     buildCommand: |
+      wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
+      echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list
       apt-get update
-      apt-get install -y chromium
+      apt-get install -y google-chrome-stable
       npm install
-      npx puppeteer browsers install chrome
     startCommand: npm start
     envVars:
       - key: NODE_ENV
@@ -15,4 +16,6 @@ services:
         value: 10000
       - key: CHROME_PATH
         value: /usr/bin/chromium
+      - key: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
+        value: "true"
     plan: free
