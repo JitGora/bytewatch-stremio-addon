@@ -16,9 +16,6 @@ services:
       
       # Install npm dependencies
       npm install
-      
-      # Verify Chrome installation
-      google-chrome-stable --version
     startCommand: |
       node index.js
     envVars:
