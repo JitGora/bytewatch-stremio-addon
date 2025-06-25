@@ -4,7 +4,7 @@ services:
     runtime: node
     buildCommand: |
       npm install
-      node -e "const puppeteer = require('puppeteer'); console.log(puppeteer.executablePath());"
+      node -e "const puppeteer = require('puppeteer-real-browser'); console.log(puppeteer.executablePath());"
     startCommand: |
       node index.js
     envVars:
