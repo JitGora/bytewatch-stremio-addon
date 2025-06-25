@@ -1,3 +1,4 @@
+// vercel.json
 {
   "version": 2,
   "builds": [
@@ -10,10 +11,18 @@
     }
   },
   "routes": [
+    // ── NEW ── make “/” serve your manifest
     {
-      "src": "/manifest.json",
+      "src": "/",
+      "dest": "/manifest.json"
+    },
+
+    // manifest.json → your lambda
+    {
+      "src": "/manifest\\.json",
       "dest": "/api/index.js/manifest.json"
     },
+    // stream routes → your lambda
     {
       "src": "/stream/(movie|series)/(.+)",
       "dest": "/api/index.js/stream/$1/$2"
