@@ -211,6 +211,7 @@ builder.defineStreamHandler(async ({type, id}) => {
 });
 
 const app = express();
-app.use(builder.getRouter());
+app.use('/', builder.getRouter());
 
 module.exports = serverless(app);
+module.exports.handler = serverless(app);

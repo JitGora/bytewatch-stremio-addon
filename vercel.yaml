@@ -6,17 +6,17 @@
   "functions": {
     "api/index.js": {
       "memory": 1024,
-      "maxDuration": 10
+      "maxDuration": 60
     }
   },
-  "rewrites": [
+  "routes": [
     {
-      "source": "/manifest.json",
-      "destination": "/api/index.js/manifest.json"
+      "src": "/manifest.json",
+      "dest": "/api/index.js/manifest.json"
     },
     {
-      "source": "/stream/:type/:id",
-      "destination": "/api/index.js/stream/:type/:id"
+      "src": "/stream/(movie|series)/(.+)",
+      "dest": "/api/index.js/stream/$1/$2"
     }
   ]
 }
