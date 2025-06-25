@@ -8,6 +8,7 @@ services:
       apt-get install -y ./chrome.deb xvfb
       rm chrome.deb
       npm install
+      google-chrome-stable --version
     startCommand: |
       Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
       export DISPLAY=:99
