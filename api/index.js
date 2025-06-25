@@ -3,6 +3,9 @@ const { extractor } = require('../unified-extractor');
 const { logger } = require('../logger');
 const axios = require('axios');
 const NodeCache = require('node-cache');
+const express = require("express");
+const serverless = require("serverless-http");
+const chromium = require("chrome-aws-lambda");
 
 const PORT = process.env.PORT || 7000;
 
@@ -207,54 +210,7 @@ builder.defineStreamHandler(async ({type, id}) => {
     }
 });
 
-// Export the handler for Vercel
-module.exports = (req, res) => {
-    const manifest = builder.getInterface();
-    logger.info(req.url);
-    // Handle manifest request
-    if (req.url === '/manifest.json' || req.url === '/') {
-        res.setHeader('Content-Type', 'application/json');
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+const app = express();
+app.use(builder.getRouter());
 
-        if (req.method === 'OPTIONS') {
-            res.status(200).end();
-            return;
-        }
-
-        res.status(200).json(manifest);
-        return;
-    }
-
-    // Handle stream requests
-    if (req.url.startsWith('/stream/')) {
-        const path = req.url.replace('/stream/', '');
-        const [type, id] = path.split('/');
-
-        if (type && id) {
-            builder.getInterface().stream({ type, id })
-                .then(result => {
-                    res.setHeader('Content-Type', 'application/json');
-                    res.setHeader('Access-Control-Allow-Origin', '*');
-                    res.status(200).json(result);
-                })
-                .catch(error => {
-                    console.error('Stream error:', error);
-                    res.setHeader('Content-Type', 'application/json');
-                    res.setHeader('Access-Control-Allow-Origin', '*');
-                    res.status(500).json({ error: 'Internal server error' });
-                });
-        } else {
-            res.setHeader('Content-Type', 'application/json');
-            res.setHeader('Access-Control-Allow-Origin', '*');
-            res.status(400).json({ error: 'Invalid request' });
-        }
-        return;
-    }
-
-    // Default response
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.status(404).json({ error: 'Not found yet' });
-};
+module.exports = serverless(app);

@@ -1,12 +1,22 @@
 {
   "version": 2,
   "builds": [
-    {
-      "src": "api/index.js",
-      "use": "@vercel/node"
-    }
+    { "src": "api/index.js", "use": "@vercel/node" }
   ],
-  "routes": [
-
+  "functions": {
+    "api/index.js": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/manifest.json",
+      "destination": "/api/index.js/manifest.json"
+    },
+    {
+      "source": "/stream/:type/:id",
+      "destination": "/api/index.js/stream/:type/:id"
+    }
   ]
 }
