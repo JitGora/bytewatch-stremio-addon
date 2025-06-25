@@ -2,12 +2,7 @@ services:
   - type: web
     name: bytewatch-stremio-addon
     runtime: node
-    repo: https://github.com/93bx/bytewatch-stremio-addon.git
     buildCommand: |
-      curl -fsSL https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb -o chrome.deb
-      apt-get update
-      apt-get install -y ./chrome.deb xvfb
-      rm chrome.deb
       npm install
     startCommand: |
       node index.js
@@ -17,7 +12,7 @@ services:
       - key: PORT
         value: 10000
       - key: CHROME_PATH
-        value: /usr/bin/google-chrome-stable
+        value: /opt/render/.cache/puppeteer/chrome/linux-137.0.7151.119/chrome-linux64/chrome
       - key: DISPLAY
         value: ":99"
     plan: free
