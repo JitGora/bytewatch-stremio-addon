@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "postinstall": "npx puppeteer browsers install chrome"
+    "postinstall": "npx puppeteer browsers install chrome",
+    "dev": "vercel dev"
   },
   "keywords": [],
   "author": "93bx",
@@ -17,5 +18,7 @@
     "stremio-addon-sdk": "^1.1.6",
     "winston": "^3.17.0",
     "xvfb": "^0.4.0"
+  }, "devDependencies": {
+    "@vercel/node": "^3.0.0"
   }
 }
