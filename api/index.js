@@ -210,7 +210,7 @@ builder.defineStreamHandler(async ({type, id}) => {
 // Export the handler for Vercel
 module.exports = (req, res) => {
     const manifest = builder.getInterface();
-    console.log(req.url);
+    logger.info(req.url);
     // Handle manifest request
     if (req.url === '/manifest.json' || req.url === '/') {
         res.setHeader('Content-Type', 'application/json');
