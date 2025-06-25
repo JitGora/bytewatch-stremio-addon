@@ -7,6 +7,7 @@ const NodeCache = require('node-cache');
 const PORT = process.env.PORT || 7000;
 
 const builder = new addonBuilder({
+    id: 'org.bytetan.bytewatch',
     name: 'Bytewatch Stremio Addon',
     description: 'A Node.js-powered Stremio addon that scrapes multiple streaming sites using Puppeteer',
     version: '1.0.0',
