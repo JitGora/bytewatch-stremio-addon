@@ -2,13 +2,13 @@ services:
   - type: web
     name: bytewatch-stremio-addon
     runtime: node
+    repo: https://github.com/93bx/bytewatch-stremio-addon.git
     buildCommand: |
       curl -fsSL https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb -o chrome.deb
       apt-get update
       apt-get install -y ./chrome.deb xvfb
       rm chrome.deb
       npm install
-      google-chrome-stable --version
     startCommand: |
       node index.js
     envVars:
