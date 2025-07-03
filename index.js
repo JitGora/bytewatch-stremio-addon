@@ -69,27 +69,17 @@ async function extractAllStreams({type, imdbId, season, episode}) {
 
     const [
         wooflixResult,
-        fmoviesResult,
-        vidoraResult,
-        videasyResult,
         viloraResult,
         vidsrcResult,
+        vidjoyResult,
+        vidifyResult
     ] = await Promise.allSettled([
         extractor('wooflix', type, id, season, episode),
-        extractor('fmovies', type, id, season, episode),
-        extractor('vidora', type, id, season, episode),
-        extractor('videasy', type, id, season, episode),
         extractor('vilora', type, id, season, episode),
         extractor('vidsrc', type, id, season, episode),
+        extractor('vidjoy', type, id, season, episode),
+        extractor('vidify', type, id, season, episode)
     ]);
-
-    if (fmoviesResult.status === 'fulfilled' && fmoviesResult.value) {
-        for (const label in fmoviesResult.value) {
-            streams[label] = fmoviesResult.value[label];
-        }
-    } else {
-        console.warn('❌ Fmovies extraction failed:', fmoviesResult.reason?.message);
-    }
 
     if (wooflixResult.status === 'fulfilled' && wooflixResult.value) {
         for (const label in wooflixResult.value) {
@@ -97,22 +87,6 @@ async function extractAllStreams({type, imdbId, season, episode}) {
         }
     } else {
         console.warn('❌ wooflix extraction failed:', wooflixResult.reason?.message);
-    }
-
-    if (vidoraResult.status === 'fulfilled' && vidoraResult.value) {
-        for (const label in vidoraResult.value) {
-            streams[label] = vidoraResult.value[label];
-        }
-    } else {
-        console.warn('❌ Vidora extraction failed:', vidoraResult.reason?.message);
-    }
-
-    if (videasyResult.status === 'fulfilled' && videasyResult.value) {
-        for (const label in videasyResult.value) {
-            streams[label] = videasyResult.value[label];
-        }
-    } else {
-        console.warn('❌ VideasyResult extraction failed:', vidoraResult.reason?.message);
     }
 
     if (viloraResult.status === 'fulfilled' && viloraResult.value) {
@@ -129,6 +103,22 @@ async function extractAllStreams({type, imdbId, season, episode}) {
         }
     } else {
         console.warn('❌ VidSrc Result extraction failed:', vidsrcResult.reason?.message);
+    }
+
+    if (vidjoyResult.status === 'fulfilled' && vidjoyResult.value) {
+        for (const label in vidjoyResult.value) {
+            streams[label] = vidjoyResult.value[label];
+        }
+    } else {
+        console.warn('❌ Vidjoy Result extraction failed:', vidjoyResult.reason?.message);
+    }
+
+    if (vidifyResult.status === 'fulfilled' && vidifyResult.value) {
+        for (const label in vidifyResult.value) {
+            streams[label] = vidifyResult.value[label];
+        }
+    } else {
+        console.warn('❌ Vidify Result extraction failed:', vidifyResult.reason?.message);
     }
 
     return streams;
