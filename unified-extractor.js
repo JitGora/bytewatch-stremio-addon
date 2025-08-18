@@ -1,4 +1,4 @@
-//unified-extractor.js - REAL-TIME PROCESSING VERSION  
+//unified-extractor.js - SIMPLIFIED REAL-TIME PROCESSING VERSION  
 const { connect } = require("puppeteer-real-browser");
 const logger = require("./logger");
 const axios = require('axios');
@@ -28,7 +28,24 @@ const extractors = {
     vidfast: (type, id, season, episode) =>
         type === 'movie'
             ? `https://vidfast.pro/movie/${id}`
-            : `https://vidfast.pro/tv/${id}/${season}/${episode}`
+            : `https://vidfast.pro/tv/${id}/${season}/${episode}`,
+    // ✅ NEW PROVIDERS
+    vidlink: (type, id, season, episode) =>
+        type === 'movie'
+            ? `https://vidlink.pro/movie/${id}`
+            : `https://vidlink.pro/tv/${id}/${season}/${episode}`,
+    mappletv: (type, id, season, episode) =>
+        type === 'movie'
+            ? `https://mappletv.uk/watch/movie/${id}`
+            : `https://mappletv.uk/watch/tv/${id}-${season}-${episode}`,
+    autoembed: (type, id, season, episode) =>
+        type === 'movie'
+            ? `https://player.autoembed.cc/embed/movie/${id}`
+            : `https://player.autoembed.cc/embed/tv/${id}/${season}/${episode}`,
+    'autoembed-hindi': (type, id, season, episode) =>
+        type === 'movie'
+            ? `https://test.autoembed.cc/embed/movie/${id}?server=14`
+            : `https://test.autoembed.cc/embed/tv/${id}/${season}/${episode}?server=14`
 };
 
 function randomUserAgent() {
@@ -46,7 +63,7 @@ async function parseM3U8PlaylistImmediate(playlistUrl, source) {
             headers: {
                 'User-Agent': randomUserAgent()
             },
-            timeout: 8000, // Faster timeout
+            timeout: 8000,
             validateStatus: function (status) {
                 return status >= 200 && status < 300;
             }
@@ -105,7 +122,7 @@ async function parseM3U8PlaylistImmediate(playlistUrl, source) {
     }
 }
 
-// ✅ MAIN EXTRACTOR with REAL-TIME processing
+// ✅ SIMPLIFIED MAIN EXTRACTOR - No special provider handling, uniform 20s timeout
 async function runExtractor(source, type, imdbId, season = null, episode = null, progressCollector = null) {
     if (!extractors[source]) throw new Error(`Unknown source: ${source}`);
 
@@ -143,7 +160,7 @@ async function runExtractor(source, type, imdbId, season = null, episode = null,
     });
 
     const detectedStreams = [];
-    const processedUrls = new Set(); // Prevent duplicate processing
+    const processedUrls = new Set();
 
     // ✅ REAL-TIME request handler - process M3U8 IMMEDIATELY
     page.on('request', async request => {
@@ -171,28 +188,32 @@ async function runExtractor(source, type, imdbId, season = null, episode = null,
 
             // ✅ IMMEDIATE PROCESSING - Parse M3U8 right now!
             if (requestUrl.includes('.m3u8')) {
-                try {
-                    logger.info(`⚡ IMMEDIATE parsing M3U8 for ${source}`);
-                    const parsedStreams = await parseM3U8PlaylistImmediate(requestUrl, source);
-                    
-                    // Add to main results
-                    Object.assign(streamUrls, parsedStreams);
-                    
-                    // ✅ PROGRESSIVE UPDATE - Send to collector immediately!
-                    if (progressCollector && Object.keys(parsedStreams).length > 0) {
-                        progressCollector.add(parsedStreams);
-                        logger.info(`📈 REAL-TIME: ${source} added ${Object.keys(parsedStreams).length} streams to live results`);
+                setImmediate(async () => {
+                    try {
+                        logger.info(`⚡ IMMEDIATE parsing M3U8 for ${source}`);
+                        const parsedStreams = await parseM3U8PlaylistImmediate(requestUrl, source);
+                        
+                        Object.assign(streamUrls, parsedStreams);
+                        
+                        if (progressCollector && Object.keys(parsedStreams).length > 0) {
+                            progressCollector.add(parsedStreams);
+                            logger.info(`📈 REAL-TIME: ${source} added ${Object.keys(parsedStreams).length} streams to live results`);
+                        }
+                        
+                    } catch (parseError) {
+                        logger.error(`❌ IMMEDIATE M3U8 parse failed for ${source}: ${parseError.message}`);
+                        const fallbackStream = { [`${source} Link`]: requestUrl };
+                        Object.assign(streamUrls, fallbackStream);
+                        if (progressCollector) {
+                            progressCollector.add(fallbackStream);
+                        }
                     }
-                    
-                } catch (parseError) {
-                    logger.error(`❌ IMMEDIATE M3U8 parse failed for ${source}: ${parseError.message}`);
-                    streamUrls[`${source} Link`] = requestUrl;
-                }
+                });
             } else {
-                // Direct MP4 stream
-                streamUrls[`${source} Link`] = requestUrl;
+                const directStream = { [`${source} Link`]: requestUrl };
+                Object.assign(streamUrls, directStream);
                 if (progressCollector) {
-                    progressCollector.add({[`${source} Link`]: requestUrl});
+                    progressCollector.add(directStream);
                 }
                 logger.info(`✅ IMMEDIATE: Direct video stream for ${source}`);
             }
@@ -206,50 +227,31 @@ async function runExtractor(source, type, imdbId, season = null, episode = null,
     try {
         logger.info(`🌐 Navigating to ${url}`);
         
-        if (source === 'vidify') {
-            await page.goto(url, {timeout: 0});
-        } else {
-            await page.goto(url, { 
-                waitUntil: source !== 'wooflix' ? 'networkidle2' : 'domcontentloaded', 
-                timeout: 10000 
-            });
-        }
+        // ✅ UNIFORM 20-second timeout for ALL providers - No special handling
+        await page.goto(url, { 
+            waitUntil: 'networkidle2', 
+            timeout: 20000  // 20 seconds for ALL providers
+        });
 
         logger.info(`📄 ${source} Player page loaded`);
 
-        // Source-specific handling
-        if (source === 'vidsrc') {
-            try {
-                const outerIframeHandle = await page.$('iframe');
-                if (outerIframeHandle) {
-                    logger.info('🎬 vidsrc iframe loaded');
-                    const outerFrame = await outerIframeHandle.contentFrame();
-                    if (outerFrame) {
-                        await outerFrame.click('#pl_but');
-                        logger.info('👆 vidsrc button clicked');
-                    }
-                }
-            } catch (vidsrcError) {
-                logger.warn(`⚠️ vidsrc iframe handling failed: ${vidsrcError.message}`);
-            }
-        }
-
+        // ✅ NO SPECIAL PROVIDER HANDLING - Just wait for stream URLs
         logger.info(`⏳ ${source} Waiting for stream URLs...`);
 
-        // ✅ Wait for streams with shorter timeout since we process immediately
+        // ✅ Wait for streams with uniform timeout
         const foundUrls = new Promise(resolve => {
             const interval = setInterval(() => {
                 if (detectedStreams.length > 0) {
                     clearInterval(interval);
                     resolve(true);
                 }
-            }, 200); // Faster polling
+            }, 200);
             
-            // Auto-resolve after timeout
+            // Auto-resolve after 15 seconds of waiting
             setTimeout(() => {
                 clearInterval(interval);
                 resolve(false);
-            }, 8000); // Shorter timeout
+            }, 15000);
         });
         
         await foundUrls;
@@ -270,6 +272,7 @@ async function runExtractor(source, type, imdbId, season = null, episode = null,
         return streamUrls;
     } finally {
         try {
+            processedUrls.clear();
             await browser.close();
         } catch (closeError) {
             logger.warn(`⚠️ Error closing ${source} browser: ${closeError.message}`);
