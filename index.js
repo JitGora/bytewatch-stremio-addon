@@ -22,35 +22,34 @@ const builder = new addonBuilder({
 const streamCache = new NodeCache({ stdTTL: 7200, checkperiod: 120 });
 
 // Fetch movie data
-async function fetchOmdbDetails(imdbId){
-  try {
-    const response = await axios.get(`https://www.omdbapi.com/?i=${imdbId}&apikey=b1e4f11`);
-     if (response.data.Response === 'False') {
-      throw new Error(response.data || 'Failed to fetch data from OMDB API');
-     }
-    return response.data;
-  } catch (e) {
-    console.log(`Error fetching metadata: ${e}`)
-    return null
-  }
+async function fetchOmdbDetails(imdbId) {
+    try {
+        const response = await axios.get(`https://www.omdbapi.com/?i=${imdbId}&apikey=b1e4f11`);
+        if (response.data.Response === 'False') {
+            throw new Error(response.data || 'Failed to fetch data from OMDB API');
+        }
+        return response.data;
+    } catch (e) {
+        console.log(`Error fetching metadata: ${e}`);
+        return null;
+    }
 }
 
 // Fetch TMDB ID
-async function fetchTmdbId(imdbId){
-  try {
-      const response = await axios.get(`https://api.themoviedb.org/3/find/${imdbId}?external_source=imdb_id`,
-          {
-              method: 'GET',
-              headers: {
-                  accept: 'application/json',
-                  Authorization: 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI3M2EyNzkwNWM1Y2IzNjE1NDUyOWNhN2EyODEyMzc0NCIsIm5iZiI6MS43MjM1ODA5NTAwMDg5OTk4ZSs5LCJzdWIiOiI2NmJiYzIxNjI2NmJhZmVmMTQ4YzVkYzkiLCJzY29wZXMiOlsiYXBpX3JlYWQiXSwidmVyc2lvbiI6MX0.y7N6qt4Lja5M6wnFkqqo44mzEMJ60Pzvm0z_TfA1vxk'
-              }
-          });
-      return response.data;
-  } catch (e) {
-      console.log(`Error fetching metadata: ${e}`)
-      return null
-  }
+async function fetchTmdbId(imdbId) {
+    try {
+        const response = await axios.get(`https://api.themoviedb.org/3/find/${imdbId}?external_source=imdb_id`, {
+            method: 'GET',
+            headers: {
+                accept: 'application/json',
+                Authorization: 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI3M2EyNzkwNWM1Y2IzNjE1NDUyOWNhN2EyODEyMzc0NCIsIm5iZiI6MS43MjM1ODA5NTAwMDg5OTk4ZSs5LCJzdWIiOiI2NmJiYzIxNjI2NmJhZmVmMTQ4YzVkYzkiLCJzY29wZXMiOlsiYXBpX3JlYWQiXSwidmVyc2lvbiI6MX0.y7N6qt4Lja5M6wnFkqqo44mzEMJ60Pzvm0z_TfA1vxk'
+            }
+        });
+        return response.data;
+    } catch (e) {
+        console.log(`Error fetching metadata: ${e}`);
+        return null;
+    }
 }
 
 // Main extraction function
@@ -139,23 +138,27 @@ async function getMovieStreams(imdbId) {
     const cacheKey = `movie:${imdbId}`;
     const metadata = await fetchOmdbDetails(imdbId);
 
-    // Check cache first
     const cached = streamCache.get(cacheKey);
     if (cached) {
         console.log(`Using cached stream for movie ${imdbId}`);
         return Object.entries(cached).map(([name, url]) => ({
-            name,
+            name: name.includes('1080p') ? `🔥 ${name}` : 
+                  name.includes('720p') ? `⭐ ${name}` : 
+                  name.includes('480p') ? `📺 ${name}` : name,
             url,
-            description: `${metadata.Title} (${metadata.Year})`
+            description: `${metadata?.Title || 'Movie'} (${metadata?.Year || 'Unknown'})`
         }));
     }
+    
     const streams = await extractAllStreams({ type: 'movie', imdbId });
     streamCache.set(cacheKey, streams);
 
     return Object.entries(streams).map(([name, url]) => ({
-        name,
+        name: name.includes('1080p') ? `🔥 ${name}` : 
+              name.includes('720p') ? `⭐ ${name}` : 
+              name.includes('480p') ? `📺 ${name}` : name,
         url,
-        description: `${metadata.Title} (${metadata.Year})`
+        description: `${metadata?.Title || 'Movie'} (${metadata?.Year || 'Unknown'})`
     }));
 }
 
@@ -164,23 +167,26 @@ async function getSeriesStreams(imdbId, season, episode) {
     const cacheKey = `series:${imdbId}:${season}:${episode}`;
     const metadata = await fetchOmdbDetails(imdbId);
 
-    // Check cache first
     const cached = streamCache.get(cacheKey);
     if (cached) {
         console.log(`Using cached stream for series ${imdbId} S${season}E${episode}`);
         return Object.entries(cached).map(([name, url]) => ({
-            name,
+            name: name.includes('1080p') ? `🔥 ${name}` : 
+                  name.includes('720p') ? `⭐ ${name}` : 
+                  name.includes('480p') ? `📺 ${name}` : name,
             url,
-            description: `${metadata.Title} S${season}E${episode}`
+            description: `${metadata?.Title || 'Series'} S${season}E${episode}`
         }));
     }
 
     const streams = await extractAllStreams({ type: 'series', imdbId, season, episode });
-    // streamCache.set(cacheKey, streams);
+    
     return Object.entries(streams).map(([name, url]) => ({
-        name,
+        name: name.includes('1080p') ? `🔥 ${name}` : 
+              name.includes('720p') ? `⭐ ${name}` : 
+              name.includes('480p') ? `📺 ${name}` : name,
         url,
-        description: `${metadata.Title} S${season}E${episode}`
+        description: `${metadata?.Title || 'Series'} S${season}E${episode}`
     }));
 }
 
@@ -191,8 +197,9 @@ builder.defineStreamHandler(async ({type, id}) => {
             // Movie IDs are in the format: tt1234567
             const imdbId = id.split(':')[0];
             const streams = await getMovieStreams(imdbId);
-            return Promise.resolve( { streams });
+            return Promise.resolve({ streams });
         }
+        
         if (type === 'series') {
             // Series IDs are in the format: tt1234567:1:1 (imdbId:season:episode)
             const [imdbId, season, episode] = id.split(':');
@@ -207,5 +214,5 @@ builder.defineStreamHandler(async ({type, id}) => {
     }
 });
 
-serveHTTP(builder.getInterface(), {port: PORT, hostname: "0.0.0.0"})
+serveHTTP(builder.getInterface(), {port: PORT, hostname: "0.0.0.0"});
 logger.info(`Addon running on port ${PORT}`);

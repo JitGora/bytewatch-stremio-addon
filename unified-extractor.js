@@ -1,7 +1,10 @@
 const { connect } = require("puppeteer-real-browser");
 const logger = require("./logger");
+const axios = require('axios');
+const { Parser } = require('m3u8-parser');
 
 const extractors = {
+    // ... (keep your existing extractors)
     wooflix: (type, id, season, episode) =>
         type === 'movie'
             ? `https://wooflixtv.co/watch/movie/${id}`
@@ -26,31 +29,90 @@ const extractors = {
         type === 'movie'
             ? `https://thestreamhub.xyz/watch?media_id=${id}&media_type=tmdb&`
             : `https://thestreamhub.xyz/watch?media_id=${id}&media_type=tmdb&season=${season}&episode=${episode}`,
-    // Add VidFast support
     vidfast: (type, id, season, episode) =>
         type === 'movie'
             ? `https://vidfast.pro/movie/${id}`
             : `https://vidfast.pro/tv/${id}/${season}/${episode}`
 };
 
-
 function randomUserAgent() {
-  const versions = ['114.0.5735.198', '113.0.5672.126', '112.0.5615.138'];
-  const version = versions[Math.floor(Math.random() * versions.length)];
-  return `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${version} Safari/537.36`;
+    const versions = ['114.0.5735.198', '113.0.5672.126', '112.0.5615.138'];
+    const version = versions[Math.floor(Math.random() * versions.length)];
+    return `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${version} Safari/537.36`;
+}
+
+// Function to parse M3U8 and extract quality variants
+async function parseM3U8Playlist(playlistUrl, source, baseUrl = '') {
+    try {
+        logger.info(`Parsing M3U8 playlist for ${source}: ${playlistUrl}`);
+        
+        // Fetch the M3U8 playlist content
+        const response = await axios.get(playlistUrl, {
+            headers: {
+                'User-Agent': randomUserAgent(),
+                'Referer': baseUrl || playlistUrl.split('/').slice(0, 3).join('/')
+            },
+            timeout: 5000
+        });
+
+        const parser = new Parser();
+        parser.push(response.data);
+        parser.end();
+
+        const parsedManifest = parser.manifest;
+        const qualityStreams = {};
+
+        // Check if this is a master playlist with multiple qualities
+        if (parsedManifest.playlists && parsedManifest.playlists.length > 0) {
+            logger.info(`Found ${parsedManifest.playlists.length} quality variants`);
+            
+            for (const playlist of parsedManifest.playlists) {
+                const resolution = playlist.attributes?.RESOLUTION;
+                const bandwidth = playlist.attributes?.BANDWIDTH;
+                
+                // Create quality label
+                let qualityLabel = 'Unknown Quality';
+                if (resolution) {
+                    const height = resolution.height;
+                    if (height >= 1080) qualityLabel = '1080p';
+                    else if (height >= 720) qualityLabel = '720p';
+                    else if (height >= 480) qualityLabel = '480p';
+                    else qualityLabel = '360p';
+                } else if (bandwidth) {
+                    if (bandwidth >= 3000000) qualityLabel = '1080p';
+                    else if (bandwidth >= 1500000) qualityLabel = '720p';
+                    else if (bandwidth >= 800000) qualityLabel = '480p';
+                    else qualityLabel = '360p';
+                }
+
+                // Resolve relative URLs
+                let streamUrl = playlist.uri;
+                if (!streamUrl.startsWith('http')) {
+                    const playlistBase = playlistUrl.split('/').slice(0, -1).join('/');
+                    streamUrl = `${playlistBase}/${streamUrl}`;
+                }
+
+                qualityStreams[`${source} ${qualityLabel}`] = streamUrl;
+            }
+        } else {
+            // This is likely a direct stream playlist, return as-is
+            qualityStreams[`${source} Link`] = playlistUrl;
+        }
+
+        return qualityStreams;
+    } catch (error) {
+        logger.error(`Error parsing M3U8 for ${source}: ${error.message}`);
+        // Return original URL if parsing fails
+        return { [`${source} Link`]: playlistUrl };
+    }
 }
 
 async function runExtractor(source, type, imdbId, season = null, episode = null) {
-    // Check if the website is on the known list of websites
     if (!extractors[source]) throw new Error(`Unknown source: ${source}`);
 
-    // Storage for stream urls
     const streamUrls = {};
-
-    // Construct the website player url
     const url = extractors[source](type, imdbId, season, episode);
 
-    // Create and configure the browser
     const {browser, page} = await connect({
         headless: true,
         args: [
@@ -59,7 +121,12 @@ async function runExtractor(source, type, imdbId, season = null, episode = null)
             '--disable-web-security',
             "--disable-dev-shm-usage",
             '--disable-features=IsolateOrigins,site-per-process',
-            '--enable-popup-blocking'
+            '--enable-popup-blocking',
+            '--disable-gpu',
+            '--no-first-run',
+            '--disable-background-timer-throttling',
+            '--disable-backgrounding-occluded-windows',
+            '--disable-renderer-backgrounding'
         ],
         turnstile: true,
         customConfig: {},
@@ -67,6 +134,7 @@ async function runExtractor(source, type, imdbId, season = null, episode = null)
         disableXvfb: false,
         ignoreAllFlags: false,
     });
+    
     await page.setUserAgent(randomUserAgent());
     await page.setExtraHTTPHeaders({
         url,
@@ -78,54 +146,48 @@ async function runExtractor(source, type, imdbId, season = null, episode = null)
         'Sec-Fetch-Site': 'cross-site',
     });
 
-    // Enable request interception and monitoring
     await page.setRequestInterception(true);
 
-    // Prevent pop-up ads
     await page.evaluateOnNewDocument(() => {
-        window.open = () => null; // Prevents any script from opening new windows
+        window.open = () => null;
     });
 
-    // Accept any dialogs
     page.on('dialog', async dialog => {
         await dialog.accept();
     });
 
-    // Monitor all network requests for m3u8 or mp4 files
+    // Store the detected M3U8/MP4 URLs for parsing
+    const detectedStreams = [];
+
     page.on('request', async request => {
-        const url = request.url();
+        const requestUrl = request.url();
 
         if (
-            url.includes('analytics') ||
-            url.includes('ads') ||
-            url.includes('social') ||
-            url.includes('disable-devtool') ||
-            url.includes('cloudflareinsights') ||
-            url.includes('ainouzaudre') ||
-            url.includes('pixel.embed') ||
-            url.includes('histats')
+            requestUrl.includes('analytics') ||
+            requestUrl.includes('ads') ||
+            requestUrl.includes('social') ||
+            requestUrl.includes('disable-devtool') ||
+            requestUrl.includes('cloudflareinsights') ||
+            requestUrl.includes('ainouzaudre') ||
+            requestUrl.includes('pixel.embed') ||
+            requestUrl.includes('histats')
         ) {
-            // block the request for ads or tracking
             await request.abort();
-        } else if ((url.includes('.mp4') || url.includes('.m3u8') || url.includes('/mp4') || url.includes('kendrickl')) && !(url.includes('vidjoy'))) {
-            // Categorize the stream URLs
-            streamUrls[`${source} Link`] = url;
-            logger.info(`${source} stream URL detected in request`);
-            // Continue the request so the media can load
+        } else if ((requestUrl.includes('.mp4') || requestUrl.includes('.m3u8') || requestUrl.includes('/mp4') || requestUrl.includes('kendrickl')) && !(requestUrl.includes('vidjoy'))) {
+            logger.info(`${source} stream URL detected: ${requestUrl}`);
+            detectedStreams.push(requestUrl);
             await page.close();
         } else {
-            // allow the request
             await request.continue();
         }
     });
 
-    // Start the process
     try {
         logger.info(`Navigating to ${url}`);
         if (source === 'vidify') {
             await page.goto(url, {timeout: 0});
         } else {
-            await page.goto(url, { waitUntil: source !== 'wooflix' ? 'networkidle2':'domcontentloaded', timeout: 10000 });
+            await page.goto(url, { waitUntil: source !== 'wooflix' ? 'networkidle2':'domcontentloaded', timeout: 5000 });
         }
         logger.info(`${source} Player page loaded`);
 
@@ -137,41 +199,47 @@ async function runExtractor(source, type, imdbId, season = null, episode = null)
             logger.info('vidsrc button clicked')
         }
 
-        if (source === 'streamhub') {
-            // await page.evaluate(() => downloadStream());
-            // logger.info('Calling downloadStream()...');
+        if (source === 'vidfast') {
+            logger.info('VidFast-specific handling...');
         }
 
         logger.info(`${source} Waiting for m3u8/mp4 URLs.`);
 
-        // For other sources, use the original approach
         const foundUrls = new Promise(resolve => {
             const interval = setInterval(() => {
-                if (Object.keys(streamUrls).length > 0) {
+                if (detectedStreams.length > 0) {
                     clearInterval(interval);
                     resolve(true);
                 }
             }, 500);
         });
-            const timeout = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Timeout: No stream URL detected within 10 seconds')), 10000)
-            );
+        
+        const timeout = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Timeout: No stream URL detected within 5 seconds')), 5000)
+        );
+        
         await Promise.race([foundUrls, timeout]);
 
+        // Parse each detected stream URL
+        for (const streamUrl of detectedStreams) {
+            if (streamUrl.includes('.m3u8')) {
+                // Parse M3U8 playlist for quality variants
+                const parsedStreams = await parseM3U8Playlist(streamUrl, source, url);
+                Object.assign(streamUrls, parsedStreams);
+            } else {
+                // Direct MP4 or other format
+                streamUrls[`${source} Link`] = streamUrl;
+            }
+        }
 
-        // Check if we found any stream URLs
         if (Object.keys(streamUrls).length === 0) {
             throw new Error('No stream URL found');
         }
 
-        logger.info(`${source} Stream URLs found: ${Object.entries(streamUrls).map(([key, value]) => `${value}`)}`);
+        logger.info(`${source} Final streams: ${Object.keys(streamUrls).join(', ')}`);
         return streamUrls;
     } catch (err) {
-        if (Object.keys(streamUrls).length === 0) {
-            logger.error(`Error extracting from ${source}: ${err.message}`);
-        } else {
-            logger.info(`${source} Stream URLs found: ${Object.entries(streamUrls).map(([key, value]) => `${value}`)}`);
-        }
+        logger.error(`Error extracting from ${source}: ${err.message}`);
         return streamUrls;
     } finally {
         await browser.close();
