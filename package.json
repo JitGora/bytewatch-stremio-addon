@@ -1,6 +1,6 @@
 {
   "name": "bytewatch-stremio-addon",
-  "version": "1.0.0",
+  "version": "4.0.0",
   "description": "A Node.js app to scrape streaming websites for links and provide it to Stremio",
   "main": "index.js",
   "scripts": {
