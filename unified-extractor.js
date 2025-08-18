@@ -26,8 +26,13 @@ const extractors = {
         type === 'movie'
             ? `https://thestreamhub.xyz/watch?media_id=${id}&media_type=tmdb&`
             : `https://thestreamhub.xyz/watch?media_id=${id}&media_type=tmdb&season=${season}&episode=${episode}`,
-
+    // Add VidFast support
+    vidfast: (type, id, season, episode) =>
+        type === 'movie'
+            ? `https://vidfast.pro/movie/${id}`
+            : `https://vidfast.pro/tv/${id}/${season}/${episode}`
 };
+
 
 function randomUserAgent() {
   const versions = ['114.0.5735.198', '113.0.5672.126', '112.0.5615.138'];

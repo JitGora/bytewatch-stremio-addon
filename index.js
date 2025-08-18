@@ -1,4 +1,4 @@
-const { addonBuilder, serveHTTP }  = require('stremio-addon-sdk');
+const { addonBuilder, serveHTTP } = require('stremio-addon-sdk');
 const NodeCache = require('node-cache');
 const axios = require('axios');
 const logger = require('./logger');
@@ -60,7 +60,7 @@ async function extractAllStreams({type, imdbId, season, episode}) {
 
     const id = type === 'movie'
         ? tmdbRes['movie_results'][0]?.id
-        : tmdbRes['tv_results'][0]?.id;
+        : tmdbRes['tv_results']?.id;
 
     if (!id) {
         console.warn('❌ TMDB ID not found');
@@ -72,13 +72,15 @@ async function extractAllStreams({type, imdbId, season, episode}) {
         viloraResult,
         vidsrcResult,
         vidjoyResult,
-        vidifyResult
+        vidifyResult,
+        vidfastResult
     ] = await Promise.allSettled([
         extractor('wooflix', type, id, season, episode),
         extractor('vilora', type, id, season, episode),
         extractor('vidsrc', type, id, season, episode),
         extractor('vidjoy', type, id, season, episode),
-        extractor('vidify', type, id, season, episode)
+        extractor('vidify', type, id, season, episode),
+        extractor('vidfast', type, id, season, episode)
     ]);
 
     if (wooflixResult.status === 'fulfilled' && wooflixResult.value) {
@@ -119,6 +121,14 @@ async function extractAllStreams({type, imdbId, season, episode}) {
         }
     } else {
         console.warn('❌ Vidify Result extraction failed:', vidifyResult.reason?.message);
+    }
+
+    if (vidfastResult.status === 'fulfilled' && vidfastResult.value) {
+        for (const label in vidfastResult.value) {
+            streams[label] = vidfastResult.value[label];
+        }
+    } else {
+        console.warn('❌ VidFast Result extraction failed:', vidfastResult.reason?.message);
     }
 
     return streams;
@@ -173,8 +183,6 @@ async function getSeriesStreams(imdbId, season, episode) {
         description: `${metadata.Title} S${season}E${episode}`
     }));
 }
-
-
 
 builder.defineStreamHandler(async ({type, id}) => {
     logger.info(`Stream request: ${type}, ${id}`);
