@@ -88,8 +88,15 @@ async function parseM3U8Playlist(playlistUrl, source, baseUrl = '') {
                 // Resolve relative URLs
                 let streamUrl = playlist.uri;
                 if (!streamUrl.startsWith('http')) {
-                    const playlistBase = playlistUrl.split('/').slice(0, -1).join('/');
-                    streamUrl = `${playlistBase}/${streamUrl}`;
+                    if (streamUrl.startsWith('/')) {
+                        // Absolute path - use domain only
+                        const urlObj = new URL(playlistUrl);
+                        streamUrl = `${urlObj.protocol}//${urlObj.host}${streamUrl}`;
+                    } else {
+                        // Relative path - use directory
+                        const playlistBase = playlistUrl.split('/').slice(0, -1).join('/');
+                        streamUrl = `${playlistBase}/${streamUrl}`;
+                    }
                 }
 
                 qualityStreams[`${source} ${qualityLabel}`] = streamUrl;
