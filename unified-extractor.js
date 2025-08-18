@@ -4,15 +4,15 @@ const axios = require('axios');
 const { Parser } = require('m3u8-parser');
 
 const extractors = {
-    // ... (keep your existing extractors)
+    
     wooflix: (type, id, season, episode) =>
         type === 'movie'
             ? `https://wooflixtv.co/watch/movie/${id}`
             : `https://wooflixtv.co/watch/tv/${id}?season=${season}&episode=${episode}`,
-    vidsrc: (type, id, season, episode) =>
-        type === 'movie'
-            ? `https://vidsrc.xyz/embed/movie/${id}`
-            : `https://vidsrc.xyz/embed/tv/${id}/${season}/${episode}`,
+    // vidsrc: (type, id, season, episode) =>
+    //     type === 'movie'
+    //         ? `https://vidsrc.xyz/embed/movie/${id}`
+    //         : `https://vidsrc.xyz/embed/tv/${id}/${season}/${episode}`,
     vilora: (type, id, season, episode) =>
         type === 'movie'
             ? `https://veloratv.ru/watch/movie/${id}`
@@ -46,13 +46,16 @@ async function parseM3U8Playlist(playlistUrl, source, baseUrl = '') {
     try {
         logger.info(`Parsing M3U8 playlist for ${source}: ${playlistUrl}`);
         
-        // Fetch the M3U8 playlist content
+        // Minimal headers - remove Referer to avoid 403
         const response = await axios.get(playlistUrl, {
             headers: {
-                'User-Agent': randomUserAgent(),
-                'Referer': baseUrl || playlistUrl.split('/').slice(0, 3).join('/')
+                'User-Agent': randomUserAgent()
+                // NO Referer header - this was causing the 403
             },
-            timeout: 5000
+            timeout: 10000,
+            validateStatus: function (status) {
+                return status >= 200 && status < 300; // Only accept 2xx responses
+            }
         });
 
         const parser = new Parser();
@@ -85,7 +88,7 @@ async function parseM3U8Playlist(playlistUrl, source, baseUrl = '') {
                     else qualityLabel = '360p';
                 }
 
-                // Resolve relative URLs
+                // Resolve URLs - handle absolute paths starting with /
                 let streamUrl = playlist.uri;
                 if (!streamUrl.startsWith('http')) {
                     if (streamUrl.startsWith('/')) {
@@ -113,6 +116,7 @@ async function parseM3U8Playlist(playlistUrl, source, baseUrl = '') {
         return { [`${source} Link`]: playlistUrl };
     }
 }
+
 
 async function runExtractor(source, type, imdbId, season = null, episode = null) {
     if (!extractors[source]) throw new Error(`Unknown source: ${source}`);
@@ -194,7 +198,7 @@ async function runExtractor(source, type, imdbId, season = null, episode = null)
         if (source === 'vidify') {
             await page.goto(url, {timeout: 0});
         } else {
-            await page.goto(url, { waitUntil: source !== 'wooflix' ? 'networkidle2':'domcontentloaded', timeout: 5000 });
+            await page.goto(url, { waitUntil: source !== 'wooflix' ? 'networkidle2':'domcontentloaded', timeout: 10000 });
         }
         logger.info(`${source} Player page loaded`);
 
@@ -222,7 +226,7 @@ async function runExtractor(source, type, imdbId, season = null, episode = null)
         });
         
         const timeout = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout: No stream URL detected within 5 seconds')), 5000)
+            setTimeout(() => reject(new Error('Timeout: No stream URL detected within 5 seconds')), 10000)
         );
         
         await Promise.race([foundUrls, timeout]);
