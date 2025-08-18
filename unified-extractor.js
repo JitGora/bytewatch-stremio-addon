@@ -4,15 +4,14 @@ const axios = require('axios');
 const { Parser } = require('m3u8-parser');
 
 const extractors = {
-    
     wooflix: (type, id, season, episode) =>
         type === 'movie'
             ? `https://wooflixtv.co/watch/movie/${id}`
             : `https://wooflixtv.co/watch/tv/${id}?season=${season}&episode=${episode}`,
-    // vidsrc: (type, id, season, episode) =>
-    //     type === 'movie'
-    //         ? `https://vidsrc.xyz/embed/movie/${id}`
-    //         : `https://vidsrc.xyz/embed/tv/${id}/${season}/${episode}`,
+    vidsrc: (type, id, season, episode) =>
+        type === 'movie'
+            ? `https://vidsrc.xyz/embed/movie/${id}`
+            : `https://vidsrc.xyz/embed/tv/${id}/${season}/${episode}`,
     vilora: (type, id, season, episode) =>
         type === 'movie'
             ? `https://veloratv.ru/watch/movie/${id}`
@@ -46,15 +45,15 @@ async function parseM3U8Playlist(playlistUrl, source, baseUrl = '') {
     try {
         logger.info(`Parsing M3U8 playlist for ${source}: ${playlistUrl}`);
         
-        // Minimal headers - remove Referer to avoid 403
+        // Minimal headers to avoid 403 errors - no Referer
         const response = await axios.get(playlistUrl, {
             headers: {
                 'User-Agent': randomUserAgent()
-                // NO Referer header - this was causing the 403
+                // No Referer header to avoid 403 errors
             },
             timeout: 10000,
             validateStatus: function (status) {
-                return status >= 200 && status < 300; // Only accept 2xx responses
+                return status >= 200 && status < 300;
             }
         });
 
@@ -67,7 +66,7 @@ async function parseM3U8Playlist(playlistUrl, source, baseUrl = '') {
 
         // Check if this is a master playlist with multiple qualities
         if (parsedManifest.playlists && parsedManifest.playlists.length > 0) {
-            logger.info(`Found ${parsedManifest.playlists.length} quality variants`);
+            logger.info(`Found ${parsedManifest.playlists.length} quality variants for ${source}`);
             
             for (const playlist of parsedManifest.playlists) {
                 const resolution = playlist.attributes?.RESOLUTION;
@@ -103,10 +102,12 @@ async function parseM3U8Playlist(playlistUrl, source, baseUrl = '') {
                 }
 
                 qualityStreams[`${source} ${qualityLabel}`] = streamUrl;
+                logger.info(`Added ${source} ${qualityLabel}: ${streamUrl.substring(0, 50)}...`);
             }
         } else {
             // This is likely a direct stream playlist, return as-is
             qualityStreams[`${source} Link`] = playlistUrl;
+            logger.info(`Direct stream detected for ${source}`);
         }
 
         return qualityStreams;
@@ -117,13 +118,17 @@ async function parseM3U8Playlist(playlistUrl, source, baseUrl = '') {
     }
 }
 
-
 async function runExtractor(source, type, imdbId, season = null, episode = null) {
+    // Check if the website is on the known list of websites
     if (!extractors[source]) throw new Error(`Unknown source: ${source}`);
 
+    // Storage for stream urls
     const streamUrls = {};
+
+    // Construct the website player url
     const url = extractors[source](type, imdbId, season, episode);
 
+    // Create and configure the browser
     const {browser, page} = await connect({
         headless: true,
         args: [
@@ -157,12 +162,15 @@ async function runExtractor(source, type, imdbId, season = null, episode = null)
         'Sec-Fetch-Site': 'cross-site',
     });
 
+    // Enable request interception and monitoring
     await page.setRequestInterception(true);
 
+    // Prevent pop-up ads
     await page.evaluateOnNewDocument(() => {
-        window.open = () => null;
+        window.open = () => null; // Prevents any script from opening new windows
     });
 
+    // Accept any dialogs
     page.on('dialog', async dialog => {
         await dialog.accept();
     });
@@ -170,6 +178,7 @@ async function runExtractor(source, type, imdbId, season = null, episode = null)
     // Store the detected M3U8/MP4 URLs for parsing
     const detectedStreams = [];
 
+    // Monitor all network requests for m3u8 or mp4 files
     page.on('request', async request => {
         const requestUrl = request.url();
 
@@ -183,16 +192,20 @@ async function runExtractor(source, type, imdbId, season = null, episode = null)
             requestUrl.includes('pixel.embed') ||
             requestUrl.includes('histats')
         ) {
+            // block the request for ads or tracking
             await request.abort();
         } else if ((requestUrl.includes('.mp4') || requestUrl.includes('.m3u8') || requestUrl.includes('/mp4') || requestUrl.includes('kendrickl')) && !(requestUrl.includes('vidjoy'))) {
-            logger.info(`${source} stream URL detected: ${requestUrl}`);
+            // Categorize the stream URLs
+            logger.info(`${source} stream URL detected: ${requestUrl.substring(0, 80)}...`);
             detectedStreams.push(requestUrl);
             await page.close();
         } else {
+            // allow the request
             await request.continue();
         }
     });
 
+    // Start the process
     try {
         logger.info(`Navigating to ${url}`);
         if (source === 'vidify') {
@@ -203,19 +216,34 @@ async function runExtractor(source, type, imdbId, season = null, episode = null)
         logger.info(`${source} Player page loaded`);
 
         if (source === 'vidsrc') {
-            const outerIframeHandle = await page.$('iframe');
-            logger.info('vidsrc iframe loaded')
-            const outerFrame = await outerIframeHandle.contentFrame();
-            await outerFrame.click('#pl_but');
-            logger.info('vidsrc button clicked')
+            try {
+                const outerIframeHandle = await page.$('iframe');
+                if (outerIframeHandle) {
+                    logger.info('vidsrc iframe loaded')
+                    const outerFrame = await outerIframeHandle.contentFrame();
+                    if (outerFrame) {
+                        await outerFrame.click('#pl_but');
+                        logger.info('vidsrc button clicked')
+                    }
+                }
+            } catch (vidsrcError) {
+                logger.warn(`vidsrc iframe handling failed: ${vidsrcError.message}`);
+            }
         }
 
         if (source === 'vidfast') {
             logger.info('VidFast-specific handling...');
+            // Add any VidFast-specific logic here if needed
+        }
+
+        if (source === 'streamhub') {
+            // await page.evaluate(() => downloadStream());
+            // logger.info('Calling downloadStream()...');
         }
 
         logger.info(`${source} Waiting for m3u8/mp4 URLs.`);
 
+        // Wait for stream URLs to be detected
         const foundUrls = new Promise(resolve => {
             const interval = setInterval(() => {
                 if (detectedStreams.length > 0) {
@@ -226,7 +254,7 @@ async function runExtractor(source, type, imdbId, season = null, episode = null)
         });
         
         const timeout = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout: No stream URL detected within 5 seconds')), 10000)
+            setTimeout(() => reject(new Error('Timeout: No stream URL detected within 10 seconds')), 10000)
         );
         
         await Promise.race([foundUrls, timeout]);
@@ -235,14 +263,17 @@ async function runExtractor(source, type, imdbId, season = null, episode = null)
         for (const streamUrl of detectedStreams) {
             if (streamUrl.includes('.m3u8')) {
                 // Parse M3U8 playlist for quality variants
+                logger.info(`Parsing M3U8 playlist for ${source}`);
                 const parsedStreams = await parseM3U8Playlist(streamUrl, source, url);
                 Object.assign(streamUrls, parsedStreams);
             } else {
                 // Direct MP4 or other format
                 streamUrls[`${source} Link`] = streamUrl;
+                logger.info(`Direct video stream detected for ${source}`);
             }
         }
 
+        // Check if we found any stream URLs
         if (Object.keys(streamUrls).length === 0) {
             throw new Error('No stream URL found');
         }
@@ -250,12 +281,19 @@ async function runExtractor(source, type, imdbId, season = null, episode = null)
         logger.info(`${source} Final streams: ${Object.keys(streamUrls).join(', ')}`);
         return streamUrls;
     } catch (err) {
-        logger.error(`Error extracting from ${source}: ${err.message}`);
+        if (Object.keys(streamUrls).length === 0) {
+            logger.error(`Error extracting from ${source}: ${err.message}`);
+        } else {
+            logger.info(`${source} Final streams: ${Object.keys(streamUrls).join(', ')}`);
+        }
         return streamUrls;
     } finally {
-        await browser.close();
+        try {
+            await browser.close();
+        } catch (closeError) {
+            logger.warn(`Error closing browser for ${source}: ${closeError.message}`);
+        }
     }
 }
 
 module.exports = runExtractor;
-// test

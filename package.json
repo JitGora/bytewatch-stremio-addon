@@ -12,10 +12,10 @@
   "author": "93bx",
   "license": "ISC",
   "dependencies": {
-    "axios": "^1.9.0",
+    "axios": "^1.11.0",
     "m3u8-parser": "^7.2.0",
     "node-cache": "^5.1.2",
-    "puppeteer-real-browser": "^1.4.2",
+    "puppeteer-real-browser": "^1.4.3",
     "stremio-addon-sdk": "^1.1.6",
     "winston": "^3.17.0",
     "xvfb": "^0.4.0"
