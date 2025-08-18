@@ -1,3 +1,4 @@
+//index.js
 const { addonBuilder, serveHTTP } = require('stremio-addon-sdk');
 const NodeCache = require('node-cache');
 const axios = require('axios');
@@ -40,7 +41,7 @@ async function extractAllStreams({type, imdbId, season, episode}) {
     const streams = {};
     
     console.log(`✅ Using IMDB ID directly: ${imdbId} for ${type}`);
-
+    
     const [
         wooflixResult,
         viloraResult,
@@ -113,7 +114,7 @@ async function extractAllStreams({type, imdbId, season, episode}) {
 async function getMovieStreams(imdbId) {
     const cacheKey = `movie:${imdbId}`;
     const metadata = await fetchOmdbDetails(imdbId);
-
+    
     // Check cache first
     const cached = streamCache.get(cacheKey);
     if (cached) {
@@ -129,7 +130,7 @@ async function getMovieStreams(imdbId) {
     
     const streams = await extractAllStreams({ type: 'movie', imdbId });
     streamCache.set(cacheKey, streams);
-
+    
     return Object.entries(streams).map(([name, url]) => ({
         name: name.includes('1080p') ? `🔥 ${name}` : 
               name.includes('720p') ? `⭐ ${name}` : 
@@ -143,7 +144,7 @@ async function getMovieStreams(imdbId) {
 async function getSeriesStreams(imdbId, season, episode) {
     const cacheKey = `series:${imdbId}:${season}:${episode}`;
     const metadata = await fetchOmdbDetails(imdbId);
-
+    
     // Check cache first
     const cached = streamCache.get(cacheKey);
     if (cached) {
@@ -156,8 +157,11 @@ async function getSeriesStreams(imdbId, season, episode) {
             description: `${metadata?.Title || 'Series'} S${season}E${episode}`
         }));
     }
-
+    
     const streams = await extractAllStreams({ type: 'series', imdbId, season, episode });
+    
+    // ✅ Fixed: Added missing cache storage for series
+    streamCache.set(cacheKey, streams);
     
     return Object.entries(streams).map(([name, url]) => ({
         name: name.includes('1080p') ? `🔥 ${name}` : 
@@ -170,12 +174,14 @@ async function getSeriesStreams(imdbId, season, episode) {
 
 builder.defineStreamHandler(async ({type, id}) => {
     logger.info(`Stream request: ${type}, ${id}`);
+    
     try {
         if (type === 'movie') {
             const imdbId = id.split(':')[0];
             const streams = await getMovieStreams(imdbId);
             return Promise.resolve( { streams });
         }
+
         if (type === 'series') {
             const [imdbId, season, episode] = id.split(':');
             const streams = await getSeriesStreams(imdbId, season, episode);
