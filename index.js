@@ -27,11 +27,11 @@ const SOURCES = [
     // { name: 'vidsrc', timeout: 40000, priority: 1 },      // 20s page + 5s buffer
     { name: 'vidlink', timeout: 40000, priority: 2 },     // 20s page + 5s buffer
     { name: 'wooflix', timeout: 40000, priority: 3 },     // 20s page + 5s buffer
-    { name: 'autoembed', timeout: 40000, priority: 4 },   // 20s page + 5s buffer
-    { name: 'vidfast', timeout: 40000, priority: 5 },     // 20s page + 5s buffer
-    { name: 'mappletv', timeout: 40000, priority: 6 },    // 20s page + 5s buffer
+    // { name: 'autoembed', timeout: 40000, priority: 4 },   // 20s page + 5s buffer
+    { name: 'vidfast', timeout: 40000, priority: 1 },     // 20s page + 5s buffer
+    // { name: 'mappletv', timeout: 40000, priority: 6 },    // 20s page + 5s buffer
     { name: 'vilora', timeout: 40000, priority: 7 },      // 20s page + 5s buffer
-    { name: 'autoembed-hindi', timeout: 40000, priority: 8 }, // 20s page + 5s buffer
+    // { name: 'autoembed-hindi', timeout: 40000, priority: 8 }, // 20s page + 5s buffer
     { name: 'vidify', timeout: 40000, priority: 9 },      // 20s page + 5s buffer
     { name: 'vidjoy', timeout: 40000, priority: 10 }      // 20s page + 5s buffer
 ];

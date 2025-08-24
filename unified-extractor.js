@@ -9,19 +9,19 @@ const extractors = {
         type === 'movie'
             ? `https://wooflixtv.co/watch/movie/${id}`
             : `https://wooflixtv.co/watch/tv/${id}?season=${season}&episode=${episode}`,
-    vidsrc: (type, id, season, episode) =>
-        type === 'movie'
-            ? `https://vidsrc.xyz/embed/movie/${id}`
-            : `https://vidsrc.xyz/embed/tv/${id}/${season}/${episode}`,
-    vilora: (type, id, season, episode) =>
-        type === 'movie'
-            ? `https://veloratv.ru/watch/movie/${id}`
-            : `https://veloratv.ru/watch/tv/${id}/${season}/${episode}`,
+    // vidsrc: (type, id, season, episode) =>
+    //     type === 'movie'
+    //         ? `https://vidsrc.xyz/embed/movie/${id}`
+    //         : `https://vidsrc.xyz/embed/tv/${id}/${season}/${episode}`,
+    // vilora: (type, id, season, episode) =>
+    //     type === 'movie'
+    //         ? `https://veloratv.ru/watch/movie/${id}`
+    //         : `https://veloratv.ru/watch/tv/${id}/${season}/${episode}`,
     vidjoy: (type, id, season, episode) =>
         type === 'movie'
             ? `https://vidjoy.pro/embed/movie/${id}`
             : `https://vidjoy.pro/embed/tv/${id}/${season}/${episode}`,
-    vidify: (type, id, season, episode) =>
+    vidify: (type, id, season, episode) => // No ads
         type === 'movie'
             ? `https://vidify.top/embed/movie/${id}`
             : `https://vidify.top/embed/tv/${id}/${season}/${episode}`,
@@ -37,15 +37,15 @@ const extractors = {
     mappletv: (type, id, season, episode) =>
         type === 'movie'
             ? `https://mappletv.uk/watch/movie/${id}`
-            : `https://mappletv.uk/watch/tv/${id}-${season}-${episode}`,
-    autoembed: (type, id, season, episode) =>
-        type === 'movie'
-            ? `https://player.autoembed.cc/embed/movie/${id}`
-            : `https://player.autoembed.cc/embed/tv/${id}/${season}/${episode}`,
-    'autoembed-hindi': (type, id, season, episode) =>
-        type === 'movie'
-            ? `https://test.autoembed.cc/embed/movie/${id}?server=14`
-            : `https://test.autoembed.cc/embed/tv/${id}/${season}/${episode}?server=14`
+            : `https://mappletv.uk/watch/tv/${id}-${season}-${episode}`
+    // autoembed: (type, id, season, episode) =>
+    //     type === 'movie'
+    //         ? `https://player.autoembed.cc/embed/movie/${id}`
+    //         : `https://player.autoembed.cc/embed/tv/${id}/${season}/${episode}`,
+    // 'autoembed-hindi': (type, id, season, episode) =>
+    //     type === 'movie'
+    //         ? `https://test.autoembed.cc/embed/movie/${id}?server=14`
+    //         : `https://test.autoembed.cc/embed/tv/${id}/${season}/${episode}?server=14`
 };
 
 function randomUserAgent() {
