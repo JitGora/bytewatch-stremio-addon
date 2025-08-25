@@ -26,7 +26,7 @@ const failureCache = new NodeCache({ stdTTL: 300, checkperiod: 60 });
 const SOURCES = [
     // { name: 'vidsrc', timeout: 40000, priority: 1 },      // 20s page + 5s buffer
     { name: 'vidlink', timeout: 20000, priority: 2 },     // 20s page + 5s buffer
-    { name: 'wooflix', timeout: 20000, priority: 3 },     // 20s page + 5s buffer
+    // { name: 'wooflix', timeout: 20000, priority: 3 },     // 20s page + 5s buffer
     // { name: 'autoembed', timeout: 40000, priority: 4 },   // 20s page + 5s buffer
     { name: 'vidfast', timeout: 20000, priority: 1 },     // 20s page + 5s buffer
     // { name: 'mappletv', timeout: 40000, priority: 6 },    // 20s page + 5s buffer

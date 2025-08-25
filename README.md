@@ -81,17 +81,17 @@ Note: if you want to load an addon by URL in Stremio, the URL must either be acc
 ## 🚀 Deploy Your Own Instance (One-Click)
 
 ### Option 1: Deploy to Render (Recommended)
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/93bx/bytewatch-stremio-addon)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/JitGora/bytewatch-stremio-addon)
 
 ### Option 2: Deploy to Vercel
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2F93bx%2Fbytewatch-stremio-addon)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2JitGora%2Fbytewatch-stremio-addon)
 
 ### Manual Deployment Options
 
 #### Deploy to Render Manually
 1. Sign up at [render.com](https://render.com)
 2. Click "New Web Service"
-3. Click "Public Git Repository" and paste the Github link > [Github repo link](https://github.com/93bx/bytewatch-stremio-addon) 
+3. Click "Public Git Repository" and paste the Github link > [Github repo link](https://github.com/JitGora/bytewatch-stremio-addon) 
 4. Set environment variable: `PORT = 10000`
 5. Deploy!
 

@@ -13,28 +13,28 @@ const extractors = {
     //     type === 'movie'
     //         ? `https://vidsrc.xyz/embed/movie/${id}`
     //         : `https://vidsrc.xyz/embed/tv/${id}/${season}/${episode}`,
-    // vilora: (type, id, season, episode) =>
+    // vilora: (type, id, season, episode) => // Wraper 111movies
     //     type === 'movie'
     //         ? `https://veloratv.ru/watch/movie/${id}`
     //         : `https://veloratv.ru/watch/tv/${id}/${season}/${episode}`,
-    vidjoy: (type, id, season, episode) =>
-        type === 'movie'
-            ? `https://vidjoy.pro/embed/movie/${id}`
-            : `https://vidjoy.pro/embed/tv/${id}/${season}/${episode}`,
-    vidify: (type, id, season, episode) => // No ads
-        type === 'movie'
-            ? `https://vidify.top/embed/movie/${id}`
-            : `https://vidify.top/embed/tv/${id}/${season}/${episode}`,
-    vidfast: (type, id, season, episode) =>
+    // vidjoy: (type, id, season, episode) =>  //Streaming site 
+    //     type === 'movie'
+    //         ? `https://vidjoy.pro/embed/movie/${id}`
+    //         : `https://vidjoy.pro/embed/tv/${id}/${season}/${episode}`,
+    // vidify: (type, id, season, episode) => // No ads with custom proxy
+    //     type === 'movie'
+    //         ? `https://vidify.top/embed/movie/${id}`
+    //         : `https://vidify.top/embed/tv/${id}/${season}/${episode}`,
+    vidfast: (type, id, season, episode) => //Best
         type === 'movie'
             ? `https://vidfast.pro/movie/${id}`
             : `https://vidfast.pro/tv/${id}/${season}/${episode}`,
     // ✅ NEW PROVIDERS
-    vidlink: (type, id, season, episode) =>
+    vidlink: (type, id, season, episode) => //2nd Best
         type === 'movie'
             ? `https://vidlink.pro/movie/${id}`
             : `https://vidlink.pro/tv/${id}/${season}/${episode}`,
-    mappletv: (type, id, season, episode) =>
+    mappletv: (type, id, season, episode) => // Have 4k sometimes but have encrypted urls
         type === 'movie'
             ? `https://mappletv.uk/watch/movie/${id}`
             : `https://mappletv.uk/watch/tv/${id}-${season}-${episode}`
