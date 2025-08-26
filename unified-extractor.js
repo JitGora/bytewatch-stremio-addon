@@ -1,4 +1,4 @@
-//unified-extractor.js - RELIABLE BATCH PROCESSING VERSION
+//unified-extractor.js - OPTIMIZED WITH SHARED BROWSER INSTANCE
 const { connect } = require("puppeteer-real-browser");
 const logger = require("./logger");
 const axios = require('axios');
@@ -30,6 +30,45 @@ const extractors = {
             ? `https://mappletv.uk/watch/movie/${id}`
             : `https://mappletv.uk/watch/tv/${id}-${season}-${episode}`
 };
+
+// --- BROWSER MANAGEMENT ---
+// This promise will hold the single, shared browser instance.
+let browserPromise = null;
+
+// This function initializes the browser if it's not already running,
+// and returns the promise for the browser instance.
+function getBrowser() {
+    if (!browserPromise) {
+        logger.info('🚀 Launching new shared browser instance...');
+        browserPromise = connect({
+            headless: true,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-web-security',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--no-first-run'
+            ],
+            turnstile: true,
+        }).then(({ browser }) => {
+            // If the browser disconnects, reset the promise so a new one can be created.
+            browser.on('disconnected', () => {
+                logger.warn('⚠️ Shared browser has disconnected. It will be re-launched on the next request.');
+                browserPromise = null;
+            });
+            logger.info('✅ Shared browser launched successfully.');
+            return browser;
+        }).catch(err => {
+            logger.error('❌ Failed to launch shared browser:', err);
+            browserPromise = null; // Reset on failure to allow retries
+            throw err; // Re-throw the error to fail the current extraction
+        });
+    }
+    return browserPromise;
+}
+// --- END BROWSER MANAGEMENT ---
+
 
 function randomUserAgent() {
     const versions = ['114.0.5735.198', '113.0.5672.126', '112.0.5615.138'];
@@ -87,29 +126,20 @@ async function parseM3U8Playlist(playlistUrl, source) {
     }
 }
 
-// ✅ REVISED MAIN EXTRACTOR with reliable two-phase (collect then process) logic
+// ✅ REVISED MAIN EXTRACTOR to use a shared browser and lightweight pages
 async function runExtractor(source, type, imdbId, season = null, episode = null) {
     if (!extractors[source]) throw new Error(`Unknown source: ${source}`);
 
     const url = extractors[source](type, imdbId, season, episode);
-    let browser;
+    let page; // Page will be defined here, not the browser
     const detectedUrls = new Set(); 
 
     // --- PHASE 1: COLLECT URLS ---
     try {
-        const { browser: connectedBrowser, page } = await connect({
-            headless: true,
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-web-security',
-                '--disable-dev-shm-usage',
-                '--disable-gpu',
-                '--no-first-run'
-            ],
-            turnstile: true,
-        });
-        browser = connectedBrowser;
+        // Get the shared browser instance
+        const browser = await getBrowser();
+        // Create a new, lightweight page (like a new tab)
+        page = await browser.newPage();
 
         await page.setUserAgent(randomUserAgent());
         await page.setRequestInterception(true);
@@ -119,10 +149,14 @@ async function runExtractor(source, type, imdbId, season = null, episode = null)
 
         page.on('request', request => {
             const requestUrl = request.url();
+            const resourceType = request.resourceType();
+            
+            // More aggressive blocking for performance
+            const blockedResourceTypes = ['image', 'stylesheet', 'font', 'media'];
             const blockedKeywords = ['analytics', 'ads', 'social', 'disable-devtool', 'cloudflareinsights', 'pixel.embed', 'histats'];
             const streamKeywords = ['.mp4', '.m3u8', '/mp4', 'kendrickl'];
 
-            if (blockedKeywords.some(keyword => requestUrl.includes(keyword))) {
+            if (blockedResourceTypes.includes(resourceType) || blockedKeywords.some(keyword => requestUrl.includes(keyword))) {
                 request.abort();
             } else if (streamKeywords.some(keyword => requestUrl.includes(keyword))) {
                 logger.info(`🎯 ${source} stream DETECTED: ${requestUrl.substring(0, 80)}...`);
@@ -144,11 +178,12 @@ async function runExtractor(source, type, imdbId, season = null, episode = null)
     } catch (err) {
         logger.error(`❌ ${source} extraction failed during browser navigation: ${err.message}`);
     } finally {
-        if (browser) {
+        // Only close the page, not the entire browser
+        if (page) {
             try {
-                await browser.close();
+                await page.close();
             } catch (closeError) {
-                logger.warn(`⚠️ Error closing ${source} browser: ${closeError.message}`);
+                logger.warn(`⚠️ Error closing ${source} page: ${closeError.message}`);
             }
         }
     }
