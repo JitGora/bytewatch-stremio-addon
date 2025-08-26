@@ -29,6 +29,11 @@ const extractors = {
         type === 'movie'
             ? `https://vidfast.pro/movie/${id}`
             : `https://vidfast.pro/tv/${id}/${season}/${episode}`,
+    // 111movies.com
+    onemovies: (type, id, season, episode) =>
+        type === 'movie'
+            ? `https://111movies.com/movie/${id}`
+            : `https://111movies.com/tv/${id}/${season}/${episode}`,
     // ✅ NEW PROVIDERS
     vidlink: (type, id, season, episode) => //2nd Best
         type === 'movie'
