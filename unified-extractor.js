@@ -13,10 +13,10 @@ const extractors = {
     //     type === 'movie'
     //         ? `https://vidsrc.xyz/embed/movie/${id}`
     //         : `https://vidsrc.xyz/embed/tv/${id}/${season}/${episode}`,
-    // vilora: (type, id, season, episode) => // Wraper 111movies
-    //     type === 'movie'
-    //         ? `https://veloratv.ru/watch/movie/${id}`
-    //         : `https://veloratv.ru/watch/tv/${id}/${season}/${episode}`,
+    vilora: (type, id, season, episode) => // Wraper 111movies
+        type === 'movie'
+            ? `https://veloratv.ru/watch/movie/${id}`
+            : `https://veloratv.ru/watch/tv/${id}/${season}/${episode}`,
     // vidjoy: (type, id, season, episode) =>  //Streaming site 
     //     type === 'movie'
     //         ? `https://vidjoy.pro/embed/movie/${id}`
