@@ -1,4 +1,4 @@
-//unified-extractor.js - OPTIMIZED WITH SHARED BROWSER INSTANCE
+//unified-extractor.js - FIXED VERSION WITH PROPER STREAM DETECTION TIMING
 const { connect } = require("puppeteer-real-browser");
 const logger = require("./logger");
 const axios = require('axios');
@@ -32,11 +32,8 @@ const extractors = {
 };
 
 // --- BROWSER MANAGEMENT ---
-// This promise will hold the single, shared browser instance.
 let browserPromise = null;
 
-// This function initializes the browser if it's not already running,
-// and returns the promise for the browser instance.
 function getBrowser() {
     if (!browserPromise) {
         logger.info('🚀 Launching new shared browser instance...');
@@ -52,7 +49,6 @@ function getBrowser() {
             ],
             turnstile: true,
         }).then(({ browser }) => {
-            // If the browser disconnects, reset the promise so a new one can be created.
             browser.on('disconnected', () => {
                 logger.warn('⚠️ Shared browser has disconnected. It will be re-launched on the next request.');
                 browserPromise = null;
@@ -61,14 +57,12 @@ function getBrowser() {
             return browser;
         }).catch(err => {
             logger.error('❌ Failed to launch shared browser:', err);
-            browserPromise = null; // Reset on failure to allow retries
-            throw err; // Re-throw the error to fail the current extraction
+            browserPromise = null;
+            throw err;
         });
     }
     return browserPromise;
 }
-// --- END BROWSER MANAGEMENT ---
-
 
 function randomUserAgent() {
     const versions = ['114.0.5735.198', '113.0.5672.126', '112.0.5615.138'];
@@ -126,32 +120,34 @@ async function parseM3U8Playlist(playlistUrl, source) {
     }
 }
 
-// ✅ REVISED MAIN EXTRACTOR to use a shared browser and lightweight pages
+// ✅ FIXED MAIN EXTRACTOR with proper timing for JavaScript-loaded streams
 async function runExtractor(source, type, imdbId, season = null, episode = null) {
     if (!extractors[source]) throw new Error(`Unknown source: ${source}`);
 
     const url = extractors[source](type, imdbId, season, episode);
-    let page; // Page will be defined here, not the browser
-    const detectedUrls = new Set(); 
+    let page;
+    const detectedUrls = new Set();
+    let streamDetectionActive = true;
 
-    // --- PHASE 1: COLLECT URLS ---
     try {
-        // Get the shared browser instance
         const browser = await getBrowser();
-        // Create a new, lightweight page (like a new tab)
         page = await browser.newPage();
 
         await page.setUserAgent(randomUserAgent());
         await page.setRequestInterception(true);
-
         await page.evaluateOnNewDocument(() => { window.open = () => null; });
         page.on('dialog', async dialog => { await dialog.accept(); });
 
+        // ✅ IMPROVED: Continue monitoring during extended wait
         page.on('request', request => {
+            if (!streamDetectionActive) {
+                request.continue();
+                return;
+            }
+
             const requestUrl = request.url();
             const resourceType = request.resourceType();
             
-            // More aggressive blocking for performance
             const blockedResourceTypes = ['image', 'stylesheet', 'font', 'media'];
             const blockedKeywords = ['analytics', 'ads', 'social', 'disable-devtool', 'cloudflareinsights', 'pixel.embed', 'histats'];
             const streamKeywords = ['.mp4', '.m3u8', '/mp4', 'kendrickl'];
@@ -168,17 +164,40 @@ async function runExtractor(source, type, imdbId, season = null, episode = null)
         });
 
         logger.info(`🌐 Navigating to ${url} for source: ${source}`);
+        
+        // ✅ IMPROVED: Use domcontentloaded for faster initial load
         await page.goto(url, {
-            waitUntil: 'networkidle2',
-            timeout: 25000 
+            waitUntil: 'domcontentloaded',
+            timeout: 15000 
         });
 
         logger.info(`📄 ${source} page loaded. Found ${detectedUrls.size} potential stream URLs.`);
 
+        // ✅ FIXED: Wait for JavaScript to initialize while STILL monitoring for streams
+        const maxWaitTime = 8000; // Total wait time
+        const checkInterval = 500; // Check every 500ms
+        const startTime = Date.now();
+        
+        while ((Date.now() - startTime) < maxWaitTime) {
+            if (detectedUrls.size > 0) {
+                logger.info(`🎯 ${source} found ${detectedUrls.size} streams, ending wait early`);
+                break;
+            }
+            
+            // Wait and check for new streams
+            await new Promise(resolve => setTimeout(resolve, checkInterval));
+            logger.info(`⏳ ${source} waiting for streams... (${detectedUrls.size} found so far)`);
+        }
+
+        // Stop stream detection
+        streamDetectionActive = false;
+        
+        logger.info(`🏁 ${source} detection finished. Total streams found: ${detectedUrls.size}`);
+
     } catch (err) {
         logger.error(`❌ ${source} extraction failed during browser navigation: ${err.message}`);
+        streamDetectionActive = false;
     } finally {
-        // Only close the page, not the entire browser
         if (page) {
             try {
                 await page.close();

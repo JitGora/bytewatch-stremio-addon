@@ -1,0 +1,179 @@
+//unified-extractor.js - RELIABLE BATCH PROCESSING VERSION
+const { connect } = require("puppeteer-real-browser");
+const logger = require("./logger");
+const axios = require('axios');
+const { Parser } = require('m3u8-parser');
+
+const extractors = {
+    wooflix: (type, id, season, episode) =>
+        type === 'movie'
+            ? `https://wooflixtv.co/watch/movie/${id}`
+            : `https://wooflixtv.co/watch/tv/${id}?season=${season}&episode=${episode}`,
+    vilora: (type, id, season, episode) =>
+        type === 'movie'
+            ? `https://veloratv.ru/watch/movie/${id}`
+            : `https://veloratv.ru/watch/tv/${id}/${season}/${episode}`,
+    vidfast: (type, id, season, episode) =>
+        type === 'movie'
+            ? `https://vidfast.pro/movie/${id}`
+            : `https://vidfast.pro/tv/${id}/${season}/${episode}`,
+    onemovies: (type, id, season, episode) =>
+        type === 'movie'
+            ? `https://111movies.com/movie/${id}`
+            : `https://111movies.com/tv/${id}/${season}/${episode}`,
+    vidlink: (type, id, season, episode) =>
+        type === 'movie'
+            ? `https://vidlink.pro/movie/${id}`
+            : `https://vidlink.pro/tv/${id}/${season}/${episode}`,
+    mappletv: (type, id, season, episode) =>
+        type === 'movie'
+            ? `https://mappletv.uk/watch/movie/${id}`
+            : `https://mappletv.uk/watch/tv/${id}-${season}-${episode}`
+};
+
+function randomUserAgent() {
+    const versions = ['114.0.5735.198', '113.0.5672.126', '112.0.5615.138'];
+    const version = versions[Math.floor(Math.random() * versions.length)];
+    return `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${version} Safari/537.36`;
+}
+
+async function parseM3U8Playlist(playlistUrl, source) {
+    try {
+        logger.info(`🔎 Parsing M3U8 for ${source}: ${playlistUrl.substring(0, 60)}...`);
+        const response = await axios.get(playlistUrl, {
+            headers: { 'User-Agent': randomUserAgent() },
+            timeout: 8000,
+        });
+
+        const parser = new Parser();
+        parser.push(response.data);
+        parser.end();
+        const { playlists } = parser.manifest;
+        const qualityStreams = {};
+
+        if (playlists && playlists.length > 0) {
+            logger.info(`📊 Found ${playlists.length} quality variants for ${source}`);
+            for (const playlist of playlists) {
+                const { RESOLUTION: resolution, BANDWIDTH: bandwidth } = playlist.attributes;
+                let qualityLabel = 'Unknown Quality';
+
+                if (resolution) {
+                    const height = resolution.height;
+                    if (height >= 1080) qualityLabel = '1080p';
+                    else if (height >= 720) qualityLabel = '720p';
+                    else if (height >= 480) qualityLabel = '480p';
+                    else qualityLabel = '360p';
+                } else if (bandwidth) {
+                    if (bandwidth >= 3000000) qualityLabel = '1080p';
+                    else if (bandwidth >= 1500000) qualityLabel = '720p';
+                    else if (bandwidth >= 800000) qualityLabel = '480p';
+                    else qualityLabel = '360p';
+                }
+
+                let streamUrl = playlist.uri;
+                if (!streamUrl.startsWith('http')) {
+                    streamUrl = new URL(streamUrl, playlistUrl).toString();
+                }
+
+                qualityStreams[`${source} ${qualityLabel}`] = streamUrl;
+            }
+        } else {
+            qualityStreams[`${source} Link`] = playlistUrl;
+        }
+        return qualityStreams;
+    } catch (error) {
+        logger.error(`❌ M3U8 parse failed for ${source}: ${error.message}. Returning direct link.`);
+        return { [`${source} Link`]: playlistUrl };
+    }
+}
+
+// ✅ REVISED MAIN EXTRACTOR with reliable two-phase (collect then process) logic
+async function runExtractor(source, type, imdbId, season = null, episode = null) {
+    if (!extractors[source]) throw new Error(`Unknown source: ${source}`);
+
+    const url = extractors[source](type, imdbId, season, episode);
+    let browser;
+    const detectedUrls = new Set(); 
+
+    // --- PHASE 1: COLLECT URLS ---
+    try {
+        const { browser: connectedBrowser, page } = await connect({
+            headless: true,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-web-security',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--no-first-run'
+            ],
+            turnstile: true,
+        });
+        browser = connectedBrowser;
+
+        await page.setUserAgent(randomUserAgent());
+        await page.setRequestInterception(true);
+
+        await page.evaluateOnNewDocument(() => { window.open = () => null; });
+        page.on('dialog', async dialog => { await dialog.accept(); });
+
+        page.on('request', request => {
+            const requestUrl = request.url();
+            const blockedKeywords = ['analytics', 'ads', 'social', 'disable-devtool', 'cloudflareinsights', 'pixel.embed', 'histats'];
+            const streamKeywords = ['.mp4', '.m3u8', '/mp4', 'kendrickl'];
+
+            if (blockedKeywords.some(keyword => requestUrl.includes(keyword))) {
+                request.abort();
+            } else if (streamKeywords.some(keyword => requestUrl.includes(keyword))) {
+                logger.info(`🎯 ${source} stream DETECTED: ${requestUrl.substring(0, 80)}...`);
+                detectedUrls.add(requestUrl);
+                request.continue();
+            } else {
+                request.continue();
+            }
+        });
+
+        logger.info(`🌐 Navigating to ${url} for source: ${source}`);
+        await page.goto(url, {
+            waitUntil: 'networkidle2',
+            timeout: 25000 
+        });
+
+        logger.info(`📄 ${source} page loaded. Found ${detectedUrls.size} potential stream URLs.`);
+
+    } catch (err) {
+        logger.error(`❌ ${source} extraction failed during browser navigation: ${err.message}`);
+    } finally {
+        if (browser) {
+            try {
+                await browser.close();
+            } catch (closeError) {
+                logger.warn(`⚠️ Error closing ${source} browser: ${closeError.message}`);
+            }
+        }
+    }
+
+    // --- PHASE 2: PROCESS COLLECTED URLS ---
+    if (detectedUrls.size === 0) {
+        logger.warn(`⚠️ No stream URLs were detected for ${source}.`);
+        return {};
+    }
+
+    const streamProcessingPromises = [];
+    for (const streamUrl of detectedUrls) {
+        if (streamUrl.includes('.m3u8')) {
+            streamProcessingPromises.push(parseM3U8Playlist(streamUrl, source));
+        } else {
+            streamProcessingPromises.push(Promise.resolve({ [`${source} Link`]: streamUrl }));
+        }
+    }
+
+    const resolvedStreamsArray = await Promise.all(streamProcessingPromises);
+    const finalStreams = Object.assign({}, ...resolvedStreamsArray);
+
+    logger.info(`✅ ${source} COMPLETED: Finalized ${Object.keys(finalStreams).length} streams.`);
+    return finalStreams;
+}
+
+module.exports = runExtractor;
+
